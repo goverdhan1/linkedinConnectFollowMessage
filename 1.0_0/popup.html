@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LinkedIn Connection Assistant</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <img src="images/icon48.png" alt="Extension Logo" class="extension-logo">
+                <span class="app-name">Linkedin Connect, Message and Follow</span>
+            </div>
+            <!-- Removed Buy Me A Coffee button as per user request -->
+            <div class="header-actions">
+            </div>
+        </header>
+
+        <main>
+            <div class="input-group checkbox-group">
+                <input type="checkbox" id="showStats">
+                <label for="showStats">
+                    <i class="fas fa-chart-bar"></i> Show Statistics
+                </label>
+            </div>
+            <div class="stats-container" id="statsContainer" style="display: none;">
+                <div class="stat-item">
+                    <i class="fas fa-user-plus"></i>
+                    <span class="stat-label">Today's Limit</span>
+                    <input type="number" id="todayLimit" value="100" min="1" max="500" class="stat-input">
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <span class="stat-label">Cooldown (seconds)</span>
+                    <input type="number" id="cooldown" value="3" min="1" max="60" class="stat-input">
+                </div>
+            </div>
+
+            <div class="input-group" id="manualInputGroup">
+                <label for="keywords">
+                    <i class="fas fa-search"></i> Search Keywords (one per line)
+                </label>
+                <textarea
+                    id="keywords"
+                    placeholder="e.g., software engineer&#10;marketing&#10;product manager"
+                    rows="4"
+                    required
+                ></textarea>
+            </div>
+
+            <div class="input-group checkbox-group">
+                <input type="checkbox" id="loadFromFile" checked>
+                <label for="loadFromFile">
+                    <i class="fas fa-users"></i> Load from File (Use pre-saved user list)
+                </label>
+            </div>
+
+            <div class="input-group" id="fileInputGroup" style="padding-left: 20px;">
+                <label for="fileUpload">
+                    <i class="fas fa-file-alt"></i> Upload File
+                </label>
+                <input type="file" id="fileUpload" accept=".txt">
+            </div>
+
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="enableActionsCheckbox">
+                    <i class="fas fa-handshake"></i> Action Type
+                </label>
+                <div class="action-description" style="display: flex; gap: 20px; align-items: center; justify-content: space-around;">
+                    <div style="display: flex; align-items: center; white-space: nowrap;">
+                        <input type="checkbox" id="connectCheckbox" style="margin-right: 5px; padding-left: 40px;" checked>
+                        <label for="connectCheckbox" class="checkbox-label" style="margin: 0;">
+                            <i class="fas fa-user-plus"></i> Connect
+                        </label>
+                    </div>
+                    <div style="display: flex; align-items: center; white-space: nowrap;">
+                        <input type="checkbox" id="followCheckbox" checked style="margin-right: 5px; padding-left: 40px;">
+                        <label for="followCheckbox" class="checkbox-label" style="margin: 0;">
+                            <i class="fas fa-user-plus"></i> Follow
+                        </label>
+                    </div>
+                </div>
+                <div class="input-group" id="profileUrlsUploadContainer" style="margin-top: 10px; padding-left: 20px;">
+                    <label for="profileUrlsFileUpload">
+                        <i class="fas fa-file-alt"></i> Upload Profile URLs
+                    </label>
+                    <input type="file" id="profileUrlsFileUpload" accept=".txt">
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="pageLimit">
+                    <i class="fas fa-file-alt"></i> Pages to Process
+                </label>
+                <div class="range-container">
+                    <input
+                        type="range"
+                        id="pageLimit"
+                        min="1"
+                        max="10"
+                        value="1"
+                        class="range-input"
+                    >
+                    <span id="pageLimitValue">1</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="scheduleTime">
+                    <i class="fas fa-clock"></i> Schedule Time (daily)
+                </label>
+                <input type="time" id="scheduleTime" value="11:00">
+            </div>
+
+            <div class="input-group checkbox-group">
+                <input type="checkbox" id="enableAdvancedScheduling">
+                <label for="enableAdvancedScheduling">
+                    <i class="fas fa-calendar-alt"></i> Enable Advanced Scheduling (Custom date ranges)
+                </label>
+            </div>
+            <div id="advancedScheduling" style="display: none;">
+                <div class="input-group">
+                    <button id="addSchedule" class="btn-secondary">
+                        <i class="fas fa-plus"></i> Add Date Schedule
+                    </button>
+                </div>
+                <div id="schedulesList" class="schedules-list">
+                    <div class="schedule-row">
+                        <input type="date" class="schedule-date" value="">
+                        <input type="time" class="schedule-time" value="11:00">
+                        <select class="schedule-file"></select>
+                        <button class="remove-schedule btn-secondary"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <div class="date-range-section">
+                        <h4>Date Range</h4>
+                        <div class="range-inputs">
+                            <input type="date" id="rangeStart" placeholder="Start Date">
+                            <input type="date" id="rangeEnd" placeholder="End Date">
+                            <select id="rangeFile"></select>
+                            <button id="addRange" class="btn-secondary">
+                                <i class="fas fa-plus"></i> Add Range
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-container">
+                <button id="startAutomation" class="btn-primary">
+                    <i class="fas fa-play-circle"></i> Start Automation
+                </button>
+                <button id="stopAutomation" class="btn-secondary">
+                    <i class="fas fa-stop-circle"></i> Stop Automation
+                </button>
+            </div>
+
+            <div id="status" class="status-message"></div>
+
+            <div class="progress-bar">
+                <div class="progress" style="width: 0%"></div>
+            </div>
+
+            <div class="links">
+                <a href="#" id="privacyLink"><i class="fas fa-shield-alt"></i> Privacy Policy</a>
+                <a href="#" id="disclaimerLink"><i class="fas fa-exclamation-circle"></i> Disclaimer</a>
+            </div>
+        </main>
+
+        <div class="warning">
+            <i class="fas fa-exclamation-triangle"></i> 
+            Use responsibly and in accordance with LinkedIn's guidelines
+        </div>
+    </div>
+
+    <div id="privacyModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="privacyContent"></div>
+        </div>
+    </div>
+
+    <script src="Popup.js"></script>
+</body>
+</html>

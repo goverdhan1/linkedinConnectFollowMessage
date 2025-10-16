@@ -1,0 +1,7 @@
+- [x] Replace file select dropdown with file upload input in popup.html
+- [x] Remove "Collect Profile Links" checkbox from actionType in popup.html
+- [x] Update Popup.js to remove collectCheckbox handling
+- [x] Modify startAutomation in Popup.js to read uploaded file using FileReader
+- [x] Set actions to ['collect'] automatiODOO.mdcally when loadFromFile is checked
+- [x] Remove populateFileSelect for fileSelect in Popup.js
+- [ ] Test file upload and collect functionality
