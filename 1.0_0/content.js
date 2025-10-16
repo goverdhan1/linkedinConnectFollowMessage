@@ -41,6 +41,54 @@ function randomDelay(min = 1000, max = 3000) {
     );
 }
 
+function getConnectButton() {
+    // Only target the main profile's connect button in the top card area
+    let connectBtn = document.querySelector('.pv-top-card-v2-ctas .artdeco-button--primary') ||
+                     document.querySelector('.pv-top-card-v2-ctas button[aria-label*="Connect"]') ||
+                     document.querySelector('.pv-top-card-v2-ctas button[aria-label*="Invite"]') ||
+                     document.querySelector('.pv-top-card-v2-ctas .artdeco-button[data-control-name="invite"]') ||
+                     document.querySelector('.pvs-profile-actions button[aria-label*="Connect"]') ||
+                     document.querySelector('.pvs-profile-actions button[data-control-name="invite"]');
+
+    // If no connect button found in main profile area, check if it's hidden behind a "More" dropdown in the top card
+    if (!connectBtn) {
+        console.log('No direct connect button found in main profile area, checking for More dropdown...');
+        const moreButton = document.querySelector('.pv-top-card-v2-ctas button[aria-label="More actions"]') ||
+                          document.querySelector('.pv-top-card-v2-ctas .artdeco-dropdown__trigger[aria-label*="More"]') ||
+                          document.querySelector('.pv-top-card-v2-ctas button[id*="overflow-action"]');
+
+        if (moreButton) {
+            console.log('Found More button in top card, clicking to reveal options...');
+            moreButton.click();
+            // Wait for dropdown to open
+            setTimeout(() => {
+                // Now search for connect button in the dropdown
+                connectBtn = document.querySelector('.artdeco-dropdown__content button[aria-label*="Connect"]') ||
+                             document.querySelector('.artdeco-dropdown__content button[aria-label*="Invite"]') ||
+                             document.querySelector('.artdeco-dropdown__content [data-control-name="invite"]');
+                console.log('Connect button after More click:', connectBtn ? 'Found' : 'Not found');
+            }, 1000);
+        }
+    }
+
+    return connectBtn;
+}
+
+function getFollowButton() {
+    // Find the follow button that is not already following
+    return Array.from(document.querySelectorAll(
+        '.artdeco-button[aria-label*="Follow"], ' +
+        '.artdeco-button[data-control-name="follow"], ' +
+        'button[aria-label*="follow" i], ' +
+        '.pvs-profile-actions__action button'
+    )).find(btn => {
+        const label = btn.getAttribute('aria-label') || btn.textContent || '';
+        return label.toLowerCase().includes('follow') &&
+               !label.toLowerCase().includes('following') &&
+               !label.toLowerCase().includes('unfollow');
+    });
+}
+
 async function waitForProfileLoad() {
     console.log('Waiting for profile page to load...');
     const maxWait = 15000; // 15 seconds max wait
@@ -428,6 +476,14 @@ async function runAutomation() {
 
     console.log(`Found ${profileLinks.length} profile links for keyword: ${automationConfig.keyword}`);
 
+    // Perform selected actions on search results
+    if (selectedActions.includes('connect')) {
+        await processConnectActions();
+    }
+    if (selectedActions.includes('follow')) {
+        await processFollowActions();
+    }
+
     // Check if we need to navigate to next page
     if (automationConfig.currentPage < automationConfig.pageLimit) {
         const nextPageSuccess = await navigateToNextPage();
@@ -440,7 +496,7 @@ async function runAutomation() {
         }
     }
 
-    // Move to next keyword after extraction
+    // Move to next keyword after extraction and actions
     chrome.runtime.sendMessage({action: 'AUTOMATION_COMPLETE'});
 }
 
@@ -498,7 +554,42 @@ async function performActionsOnProfile(actionTypes) {
 
         name = getProfileName();
 
+        // Check which actions need to be performed
+        let actionsToPerform = [];
+        let allSkipped = true;
+
         for (const action of actionTypes) {
+            if (action === 'connect') {
+                const connectBtn = getConnectButton();
+                const label = connectBtn ? (connectBtn.getAttribute('aria-label') || connectBtn.textContent || '') : '';
+                if (!connectBtn || label.toLowerCase().includes('pending') || label.toLowerCase().includes('withdraw') || label.toLowerCase().includes('connected')) {
+                    chrome.runtime.sendMessage({action: 'LOG_ACTION', name, status: 'Already Connected', type: 'connect'});
+                } else {
+                    actionsToPerform.push('connect');
+                    allSkipped = false;
+                }
+            } else if (action === 'follow') {
+                const followBtn = getFollowButton();
+                const label = followBtn ? (followBtn.getAttribute('aria-label') || followBtn.textContent || '') : '';
+                if (!followBtn || label.toLowerCase().includes('following') || label.toLowerCase().includes('unfollow')) {
+                    chrome.runtime.sendMessage({action: 'LOG_ACTION', name, status: 'Already Following', type: 'follow'});
+                } else {
+                    actionsToPerform.push('follow');
+                    allSkipped = false;
+                }
+            }
+        }
+
+        if (allSkipped) {
+            // No actions to perform, skip to next profile
+            chrome.runtime.sendMessage({action: 'LOG_ACTION', name, status: 'Skipped - Already Done', type: 'profile'});
+            await sleep(500);
+            chrome.runtime.sendMessage({action: 'URL_VISIT_COMPLETE'});
+            return;
+        }
+
+        // Perform the necessary actions
+        for (const action of actionsToPerform) {
             if (action === 'connect') {
                 await performConnectOnProfile();
             } else if (action === 'follow') {
@@ -524,34 +615,7 @@ async function performActionsOnProfile(actionTypes) {
 async function performConnectOnProfile() {
     const name = getProfileName();
 
-    // Only target the main profile's connect button in the top card area
-    let connectBtn = document.querySelector('.pv-top-card-v2-ctas .artdeco-button--primary') ||
-                     document.querySelector('.pv-top-card-v2-ctas button[aria-label*="Connect"]') ||
-                     document.querySelector('.pv-top-card-v2-ctas button[aria-label*="Invite"]') ||
-                     document.querySelector('.pv-top-card-v2-ctas .artdeco-button[data-control-name="invite"]') ||
-                     document.querySelector('.pvs-profile-actions button[aria-label*="Connect"]') ||
-                     document.querySelector('.pvs-profile-actions button[data-control-name="invite"]');
-
-    // If no connect button found in main profile area, check if it's hidden behind a "More" dropdown in the top card
-    if (!connectBtn) {
-        console.log('No direct connect button found in main profile area, checking for More dropdown...');
-        const moreButton = document.querySelector('.pv-top-card-v2-ctas button[aria-label="More actions"]') ||
-                          document.querySelector('.pv-top-card-v2-ctas .artdeco-dropdown__trigger[aria-label*="More"]') ||
-                          document.querySelector('.pv-top-card-v2-ctas button[id*="overflow-action"]');
-
-        if (moreButton) {
-            console.log('Found More button in top card, clicking to reveal options...');
-            moreButton.click();
-            await randomDelay(1000, 2000); // Wait for dropdown to open
-
-            // Now search for connect button in the dropdown
-            connectBtn = document.querySelector('.artdeco-dropdown__content button[aria-label*="Connect"]') ||
-                         document.querySelector('.artdeco-dropdown__content button[aria-label*="Invite"]') ||
-                         document.querySelector('.artdeco-dropdown__content [data-control-name="invite"]');
-
-            console.log('Connect button after More click:', connectBtn ? 'Found' : 'Not found');
-        }
-    }
+    const connectBtn = getConnectButton();
 
     if (!connectBtn) {
         console.log('No connect button found for main profile');
@@ -584,18 +648,7 @@ async function performConnectOnProfile() {
 async function performFollowOnProfile() {
     const name = getProfileName();
 
-    // Find the follow button that is not already following
-    const followBtn = Array.from(document.querySelectorAll(
-        '.artdeco-button[aria-label*="Follow"], ' +
-        '.artdeco-button[data-control-name="follow"], ' +
-        'button[aria-label*="follow" i], ' +
-        '.pvs-profile-actions__action button'
-    )).find(btn => {
-        const label = btn.getAttribute('aria-label') || btn.textContent || '';
-        return label.toLowerCase().includes('follow') &&
-               !label.toLowerCase().includes('following') &&
-               !label.toLowerCase().includes('unfollow');
-    });
+    const followBtn = getFollowButton();
 
     if (!followBtn) {
         chrome.runtime.sendMessage({action: 'LOG_ACTION', name, status: 'Following', type: 'follow'});
